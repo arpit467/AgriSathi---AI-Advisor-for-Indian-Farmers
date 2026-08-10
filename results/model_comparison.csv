@@ -1,0 +1,4 @@
+model,n_samples,avg_bleu,avg_rouge1,avg_rouge2,avg_rougeL
+base,50,0.112,0.284,0.118,0.201
+prompt_eng,50,0.187,0.341,0.164,0.263
+finetuned,50,0.341,0.512,0.298,0.421

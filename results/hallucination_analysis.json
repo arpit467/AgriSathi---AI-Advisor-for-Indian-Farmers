@@ -1,0 +1,29 @@
+[
+  {
+    "question": "Kya gehu ki fasal august mein lagayi ja sakti hai?",
+    "ground_truth": "Nahi. Gehu Rabi fasal hai -- October-November mein lagao.",
+    "base_answer": "Yes, wheat can be grown in various seasons depending on the region.",
+    "finetuned_answer": "Nahi, gehu Rabi fasal hai. Sahi time October-November hai. August mein lagane se fasal kharab hogi.",
+    "error_type": "Factual Hallucination",
+    "base_correct": false,
+    "ft_correct": true
+  },
+  {
+    "question": "PM-KISAN mein kitna paisa milta hai?",
+    "ground_truth": "6000 rupaye per year, teen kiston mein.",
+    "base_answer": "PM-KISAN provides financial support to farmers under government schemes.",
+    "finetuned_answer": "PM-KISAN yojana mein 6,000 rupaye per year milte hain -- teen kiston mein (2,000 rupaye har 4 mahine).",
+    "error_type": "Incomplete Answer",
+    "base_correct": false,
+    "ft_correct": true
+  },
+  {
+    "question": "Tamatar mein konsa fertilizer daalna chahiye?",
+    "ground_truth": "NPK 19:19:19 + calcium nitrate best hai.",
+    "base_answer": "Use balanced fertilizers for tomatoes.",
+    "finetuned_answer": "Tamatar ke liye NPK 19:19:19 use karo. Calcium nitrate bhi faaydemand hai phal quality ke liye. Urea alag se na daalo.",
+    "error_type": "Vague / Generic",
+    "base_correct": false,
+    "ft_correct": true
+  }
+]
