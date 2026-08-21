@@ -1,13 +1,10 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
 .Python
+env/
 build/
 develop-eggs/
 dist/
@@ -24,20 +21,29 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
+# Virtual Environment
 venv/
 .venv/
-env/
 ENV/
 env.bak/
 venv.bak/
 
-# IDE & OS files
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# IDEs & Editors
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
 .DS_Store
 Thumbs.db
 
-# Database / SQLite temporary files
-*.sqlite3-journal
-*.db-journal
+# Scratch / Temporary
+scratch/
+*.log

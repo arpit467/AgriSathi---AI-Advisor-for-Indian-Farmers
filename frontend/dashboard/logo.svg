@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 140" width="100%" height="100%">
+  <defs>
+    <!-- Leaf Gradient -->
+    <linearGradient id="leafGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="50%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+    <!-- Circuit Glow Gradient -->
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a7f3d0" />
+      <stop offset="100%" stop-color="#67e8f9" />
+    </linearGradient>
+  </defs>
+
+  <!-- Leaf Base Shape -->
+  <g transform="translate(10, 10)">
+    <!-- Main Leaf Body -->
+    <path d="M 60 115 C 60 115 15 85 15 48 C 15 18 42 5 60 5 C 78 5 105 18 105 48 C 105 85 60 115 60 115 Z" 
+          fill="url(#leafGrad)" />
+    <!-- Leaf Stem -->
+    <path d="M 60 110 L 60 125" stroke="#047857" stroke-width="4" stroke-linecap="round" />
+
+    <!-- Circuit Center Spine -->
+    <path d="M 60 105 L 60 20" stroke="url(#glowGrad)" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- Left Circuit Branches -->
+    <path d="M 60 85 L 40 70 L 30 70" stroke="url(#glowGrad)" stroke-width="2" stroke-linecap="round" fill="none" />
+    <circle cx="30" cy="70" r="3" fill="#ffffff" />
+
+    <path d="M 60 65 L 35 48 L 35 38" stroke="url(#glowGrad)" stroke-width="2" stroke-linecap="round" fill="none" />
+    <circle cx="35" cy="38" r="3" fill="#ffffff" />
+
+    <path d="M 60 45 L 45 30 L 45 22" stroke="url(#glowGrad)" stroke-width="2" stroke-linecap="round" fill="none" />
+    <circle cx="45" cy="22" r="2.5" fill="#ffffff" />
+
+    <!-- Right Circuit Branches -->
+    <path d="M 60 92 L 78 78 L 88 78" stroke="url(#glowGrad)" stroke-width="2" stroke-linecap="round" fill="none" />
+    <circle cx="88" cy="78" r="3" fill="#ffffff" />
+
+    <path d="M 60 72 L 85 54 L 85 42" stroke="url(#glowGrad)" stroke-width="2" stroke-linecap="round" fill="none" />
+    <circle cx="85" cy="42" r="3" fill="#ffffff" />
+
+    <path d="M 60 50 L 75 35 L 75 25" stroke="url(#glowGrad)" stroke-width="2" stroke-linecap="round" fill="none" />
+    <circle cx="75" cy="25" r="2.5" fill="#ffffff" />
+  </g>
+
+  <!-- Typography -->
+  <text x="135" y="75" font-family="'Inter', system-ui, -apple-system, sans-serif" font-weight="700" font-size="40" fill="#0f172a" letter-spacing="-0.5px">AgriSathi <tspan fill="#0284c7">AI</tspan></text>
+  <text x="137" y="102" font-family="'Inter', system-ui, -apple-system, sans-serif" font-weight="600" font-size="14" fill="#059669" letter-spacing="1.5px">INTELLIGENT FARMING ADVISOR</text>
+</svg>

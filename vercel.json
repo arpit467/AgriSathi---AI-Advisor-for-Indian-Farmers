@@ -1,0 +1,41 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": {
+        "includeFiles": [
+          "backend/**",
+          "data/**"
+        ]
+      }
+    },
+    {
+      "src": "frontend/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/logo.svg",
+      "dest": "/frontend/dashboard/logo.svg"
+    },
+    {
+      "src": "/dashboard/(.*)",
+      "dest": "/frontend/dashboard/$1"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
+      "src": "/(query|health|metrics|calculator|agmarknet|webhook|ingest|docs|openapi.json|rag|vision|radar|inspector)(.*)",
+      "dest": "/api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/dashboard/index.html"
+    }
+  ]
+}
