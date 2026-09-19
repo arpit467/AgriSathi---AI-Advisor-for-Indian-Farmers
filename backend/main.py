@@ -300,7 +300,7 @@ class VisionResponse(BaseModel):
 def analyze_crop_image(req: VisionRequest):
     """
     Multimodal Computer Vision Endpoint: Analyzes leaf/plant images for early disease detection.
-    Connects real PyTorch Vision classifier to dynamic FAISS RAG database for ICAR treatments.
+    Connects real PyTorch Vision classifier to dynamic ChromaDB RAG database for ICAR treatments.
     """
     crop = req.crop_type if req.crop_type else None
     image_b64 = req.image_b64 or ""
@@ -308,7 +308,7 @@ def analyze_crop_image(req: VisionRequest):
     # 1. Run Real Computer Vision Inference
     res = analyze_leaf_bytes(image_b64, requested_crop=crop)
     
-    # 2. Dynamic FAISS RAG Search for ICAR treatments if FAISS index is loaded
+    # 2. Dynamic ChromaDB RAG Search for ICAR treatments if collection is loaded
     try:
         if rag_engine and len(rag_engine.chunks) > 0:
             rag_query = f"ICAR chemical treatment organic control dosage for {res['diagnosis']}"
@@ -369,7 +369,7 @@ def health():
         "status": "healthy",
         "api": "running",
         "version": "2.0.0-Developer-Innovative",
-        "features": ["RAG-FAISS", "Mistral-7B QLoRA", "Multimodal Vision AI", "Web Speech Voice", "Microclimate Advisory"]
+        "features": ["RAG-ChromaDB", "Mistral-7B QLoRA", "Multimodal Vision AI", "Web Speech Voice", "Microclimate Advisory"]
     }
 
 @app.get("/sample-questions")
