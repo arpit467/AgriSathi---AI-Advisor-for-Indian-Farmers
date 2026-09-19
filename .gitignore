@@ -47,3 +47,10 @@ Thumbs.db
 # Scratch / Temporary
 scratch/
 *.log
+
+# Vector Store Databases & Binary Embeddings
+*.bin
+data/chroma_db/
+data/chroma_db_pipeline/
+data/embeddings/
+

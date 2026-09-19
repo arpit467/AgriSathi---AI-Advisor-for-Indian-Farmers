@@ -18,7 +18,7 @@ Indian farmers face three critical problems:
 AgriSathi — a fine-tuned AI assistant that:
 - Answers farming queries in **Hindi/Hinglish**
 - Gives **region-aware** advice via RAG
-- **Reduces hallucination** using FAISS retrieval
+- **Reduces hallucination** using ChromaDB retrieval
 - Explains government schemes, diseases, irrigation, fertilizers
 
 ---
@@ -30,7 +30,7 @@ AgriSathi — a fine-tuned AI assistant that:
 | i | Dataset quality + preprocessing + split | KCC + Crop + Govt data, 80/10/10 split, Alpaca format |
 | ii | PEFT (QLoRA) fine-tuning + justification | Mistral-7B, LoRA r=16, Unsloth, 4-bit NF4 |
 | iii | Baseline comparison (3 models) | Base / Prompt-Engineered / Fine-tuned |
-| iv | Data storage | FAISS vector DB + SQLite (3 tables) |
+| iv | Data storage | ChromaDB vector DB + SQLite (3 tables) |
 | v | BLEU, ROUGE-1/2/L evaluation | 50-sample test set evaluation |
 | vi | Hallucination + error analysis | 5 known-answer cases, 3 error categories |
 | vii | Real-world applicability | Hindi/Hinglish, farmer-relevant topics |
@@ -46,7 +46,8 @@ AgriSathi/
 │   └── AgriSathi_Complete.ipynb   ← Main Colab notebook (all 7 criteria)
 ├── backend/
 │   ├── main.py                    ← FastAPI REST API
-│   ├── rag_pipeline.py            ← FAISS RAG + LLM pipeline
+│   ├── rag_engine.py              ← Dynamic ChromaDB RAG + LLM engine
+│   ├── rag_pipeline.py            ← ChromaDB RAG + LLM pipeline
 │   ├── evaluate.py                ← Full evaluation suite
 │   └── requirements.txt
 ├── frontend/
@@ -58,8 +59,8 @@ AgriSathi/
 │   │   ├── train.csv              ← 80% split
 │   │   ├── val.csv                ← 10% split
 │   │   └── test.csv               ← 10% split
-│   └── embeddings/
-│       └── faiss_index/           ← FAISS vector store
+│   ├── documents/                 ← Official Agricultural PDFs / Knowledge Base
+│   └── chroma_db/                 ← Persistent ChromaDB vector store
 ├── models/
 │   └── agrisathi-finetuned/       ← Saved QLoRA model
 ├── results/
@@ -78,11 +79,11 @@ User (Flutter App / Dashboard)
         ↓
   FastAPI Backend (main.py)
         ↓
-  RAG Pipeline (rag_pipeline.py)
+  RAG Engine (rag_engine.py)
         ↓
-  FAISS Vector DB ←── BAAI/bge-small-en-v1.5
+  ChromaDB Vector DB ←── sentence-transformers/all-MiniLM-L6-v2
         ↓
-  Fine-tuned LLM (Mistral-7B QLoRA)
+  Fine-tuned LLM (Mistral-7B QLoRA / Groq Fallback)
         ↓
   Knowledge Base (KCC + Crop Data + Govt PDFs)
         ↓

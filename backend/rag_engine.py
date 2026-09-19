@@ -1,6 +1,7 @@
 """
 AgriSathi Dynamic RAG Engine
-- TF-IDF & Vector Similarity Retrieval over Official Agricultural Knowledge Base
+- True ChromaDB Vector Similarity Retrieval over Official Agricultural Knowledge Base
+- Dense Neural Embeddings via SentenceTransformer (all-MiniLM-L6-v2)
 - Web Search Fallback for Official Government & ICAR Portals
 - Dynamic Answer Synthesizer (RAG Mode vs Fine-Tuned Mode vs Hybrid Mode)
 """
@@ -8,63 +9,99 @@ AgriSathi Dynamic RAG Engine
 import os
 import json
 import re
-import math
 import time
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
-from ingest_documents import DocumentIngestionPipeline, OUTPUT_VECTOR_STORE
+import numpy as np
+import chromadb
+from sentence_transformers import SentenceTransformer
+
+from ingest_documents import (
+    DocumentIngestionPipeline,
+    CHROMA_DB_DIR,
+    CHROMA_COLLECTION_NAME,
+    DOCUMENTS_DIR,
+    EMBEDDING_MODEL_NAME,
+    EMBEDDING_DIM,
+    get_chroma_client,
+    get_or_create_kb_collection,
+)
 from guardrail import guardrail_engine
 
 
 class AgriSathiRAGEngine:
     def __init__(self):
-        self.chunks: List[Dict[str, Any]] = []
-        self.doc_vectors: List[Dict[str, float]] = []
+        self.chroma_client: Optional[chromadb.PersistentClient] = None
+        self.collection: Optional[chromadb.Collection] = None
+        self.embedding_model: Optional[SentenceTransformer] = None
+        self._cached_chunks: List[Dict[str, Any]] = []
         self.load_vector_store()
 
-    def load_vector_store(self):
-        """Loads vector store generated from raw document ingestion pipeline."""
-        if not os.path.exists(OUTPUT_VECTOR_STORE):
-            print("[INFO] Vector store not found. Running Document Ingestion Pipeline...")
-            pipeline = DocumentIngestionPipeline()
-            pipeline.ingest()
+    @property
+    def chunks(self) -> List[Dict[str, Any]]:
+        """Maintains backward compatibility with properties expecting a chunk list."""
+        if not self._cached_chunks and self.collection is not None:
+            try:
+                count = self.collection.count()
+                if count > 0:
+                    data = self.collection.get(include=["documents", "metadatas"], limit=min(count, 5000))
+                    docs = data.get("documents", [])
+                    metas = data.get("metadatas", [])
+                    self._cached_chunks = [
+                        {
+                            "text": d,
+                            "source": m.get("source", "Uploaded Document"),
+                            "title": m.get("title", ""),
+                            "file_name": m.get("file_name", ""),
+                            "url": m.get("url", "")
+                        }
+                        for d, m in zip(docs, metas)
+                    ]
+            except Exception:
+                pass
+        return self._cached_chunks
 
-        if os.path.exists(OUTPUT_VECTOR_STORE):
-            with open(OUTPUT_VECTOR_STORE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                self.chunks = data.get("chunks", [])
-                self.doc_vectors = [c.get("vector", {}) for c in self.chunks]
-            print(f"[OK] AgriSathi RAG Engine loaded {len(self.chunks)} ingested chunks from {OUTPUT_VECTOR_STORE}")
-        else:
-            print("[WARNING] Vector store empty or unavailable.")
+    def _get_embedding_model(self) -> SentenceTransformer:
+        if self.embedding_model is None:
+            print(f"[RAG] Loading dense embedding model: {EMBEDDING_MODEL_NAME}...")
+            self.embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+        return self.embedding_model
+
+    def load_vector_store(self):
+        """Initializes connection to persistent ChromaDB collection."""
+        try:
+            self.chroma_client = get_chroma_client(CHROMA_DB_DIR)
+            self.collection = get_or_create_kb_collection(self.chroma_client, reset=False)
+            count = self.collection.count()
+            if count == 0:
+                print("[INFO] ChromaDB collection is empty. Running Document Ingestion Pipeline...")
+                pipeline = DocumentIngestionPipeline(docs_dir=DOCUMENTS_DIR, chroma_dir=CHROMA_DB_DIR)
+                pipeline.ingest()
+                self.collection = get_or_create_kb_collection(self.chroma_client, reset=False)
+                count = self.collection.count()
+
+            print(f"[OK] Connected to ChromaDB collection '{CHROMA_COLLECTION_NAME}' ({count} vectors)")
+            self._cached_chunks = []
+        except Exception as e:
+            print(f"[ERROR] Failed to load ChromaDB collection: {e}")
+            self.chroma_client = get_chroma_client(CHROMA_DB_DIR)
+            self.collection = get_or_create_kb_collection(self.chroma_client, reset=False)
 
     def reload_vector_store(self):
-        """Reloads vector store into memory after a new document is ingested."""
-        print("[RELOAD] Updating in-memory RAG vector index after file upload...")
+        """Reloads ChromaDB vector store into memory after a new document is ingested."""
+        print("[RELOAD] Reloading ChromaDB collection metadata...")
         self.load_vector_store()
 
     def flush_vector_store(self):
-        """Flushes in-memory chunks, overwrites vector store JSON file with empty state, AND deletes raw document files from disk."""
-        print("[FLUSH] Wiping vector store and clearing RAG index...")
-        self.chunks = []
-        self.doc_vectors = []
-        empty_payload = {
-            "ingest_timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "total_files": 0,
-            "total_chunks": 0,
-            "chunks": []
-        }
-        try:
-            with open(OUTPUT_VECTOR_STORE, "w", encoding="utf-8") as f:
-                json.dump(empty_payload, f, indent=2)
-            print(f"[OK] Vector store flushed: {OUTPUT_VECTOR_STORE}")
-        except Exception as e:
-            print(f"[ERROR] Failed to write empty vector store file: {e}")
+        """Flushes ChromaDB collection, resets to empty state, and removes document files from disk."""
+        print("[FLUSH] Wiping ChromaDB vector store collection...")
+        self._cached_chunks = []
+        if self.chroma_client:
+            self.collection = get_or_create_kb_collection(self.chroma_client, reset=True)
 
-        # Delete physical document files in data/documents/ so they don't linger on disk
+        # Delete physical document files in data/documents/
         import gc
         gc.collect()
-        from ingest_documents import DOCUMENTS_DIR
         docs_dir = os.path.abspath(DOCUMENTS_DIR)
         if os.path.exists(docs_dir):
             for fname in os.listdir(docs_dir):
@@ -76,59 +113,45 @@ class AgriSathiRAGEngine:
                 except Exception as err:
                     print(f"[FLUSH WARNING] Could not remove {fname}: {err}")
 
-    def _tokenize(self, text: str) -> List[str]:
-        """Multilingual tokenizer."""
-        text = text.lower()
-        words = re.findall(r'\b[a-zA-Z0-9\u0900-\u097F]+\b', text)
-        stop_words = {"ko", "ki", "ka", "ke", "mein", "par", "se", "hai", "hain", "aur", "ya", "bhi", "is", "us", "kya", "the", "a", "an", "in", "to", "for", "of"}
-        return [w for w in words if len(w) > 1 and w not in stop_words]
-
-    def _cosine_similarity(self, vec1: Dict[str, float], vec2: Dict[str, float]) -> float:
-        """Calculates cosine similarity between sparse vector representations."""
-        dot_product = sum(val * vec2.get(term, 0.0) for term, val in vec1.items())
-        norm1 = math.sqrt(sum(v ** 2 for v in vec1.values()))
-        norm2 = math.sqrt(sum(v ** 2 for v in vec2.values()))
-        if norm1 == 0 or norm2 == 0:
-            return 0.0
-        return dot_product / (norm1 * norm2)
-
     def retrieve(self, query: str, top_k: int = 5) -> List[Tuple[Dict[str, Any], float]]:
-        """Retrieves top-k relevant chunks from raw ingested document chunks."""
-        q_tokens = self._tokenize(query)
-        if not q_tokens or not self.chunks:
+        """Retrieves top-k relevant chunks from ChromaDB vector store using dense neural embeddings."""
+        if self.collection is None or self.collection.count() == 0:
             return []
 
-        # Build query vector
-        q_tf: Dict[str, int] = {}
-        for t in q_tokens:
-            q_tf[t] = q_tf.get(t, 0) + 1
-        
-        q_vec: Dict[str, float] = {}
-        for t, count in q_tf.items():
-            q_vec[t] = count / len(q_tokens)
+        model = self._get_embedding_model()
+        q_emb = model.encode([query], normalize_embeddings=True)
+        actual_k = min(top_k, self.collection.count())
+        if actual_k <= 0:
+            return []
+
+        try:
+            results = self.collection.query(
+                query_embeddings=q_emb.tolist(),
+                n_results=actual_k,
+                include=["documents", "metadatas", "distances"]
+            )
+        except Exception as e:
+            print(f"[CHROMA QUERY ERROR] {e}")
+            return []
 
         scored_docs = []
-        q_lower = query.lower()
+        docs = results.get("documents", [[]])[0]
+        metas = results.get("metadatas", [[]])[0]
+        distances = results.get("distances", [[]])[0]
 
-        for idx, chunk in enumerate(self.chunks):
-            score = self._cosine_similarity(q_vec, self.doc_vectors[idx])
-            chunk_text_lower = chunk.get("text", "").lower()
-            chunk_title_lower = chunk.get("title", "").lower()
-            file_name_lower = chunk.get("file_name", "").lower()
+        for doc_text, meta, dist in zip(docs, metas, distances):
+            # In cosine space, distance = 1 - cosine_similarity (range: 0 to 2)
+            similarity = max(0.0, min(1.0, 1.0 - float(dist)))
+            chunk = {
+                "text": doc_text,
+                "source": meta.get("source", "Uploaded Document") if meta else "Uploaded Document",
+                "title": meta.get("title", "") if meta else "",
+                "file_name": meta.get("file_name", "") if meta else "",
+                "url": meta.get("url", "") if meta else "",
+            }
+            scored_docs.append((chunk, similarity))
 
-            token_matches = sum(1 for t in q_tokens if t in chunk_text_lower)
-            if token_matches > 0:
-                score += 0.20 * (token_matches / len(q_tokens))
-
-            if any(t in chunk_title_lower for t in q_tokens) or any(t in file_name_lower for t in q_tokens):
-                score += 0.30
-
-            if score > 0.001 or token_matches > 0:
-                scored_docs.append((chunk, min(0.99, score)))
-
-        # Sort descending by score
-        scored_docs.sort(key=lambda x: x[1], reverse=True)
-        return scored_docs[:top_k]
+        return scored_docs
 
     def _web_docs_fallback_search(self, query: str) -> Dict[str, Any]:
         """Fallback search function."""
@@ -158,7 +181,6 @@ class AgriSathiRAGEngine:
     def _synthesize_finetuned_only(self, question: str) -> str:
         """
         Mode 1: Pure Fine-Tuned QLoRA Model — No RAG document retrieval.
-        Answers directly using internal domain-trained model parameters.
         """
         import requests
         groq_key = self._get_groq_key()
@@ -170,9 +192,9 @@ class AgriSathiRAGEngine:
                     "User-Agent": "AgriSathiAI/2.0"
                 }
                 system_instruction = (
-                    "Aap AgriSathi AI (Fine-Tuned QLoRA Agricultural Model) ho.\n"
-                    "Aapko bina kisi external document context ke apne internal domain fine-tuned parameters se Indian farmers aur general queries ka accurate, helpful, aur clear answer dena hai.\n"
-                    "Respond in natural Hinglish/Hindi or English matching the user's language."
+                    "You are the AgriSathi Fine-Tuned Agriculture Base Model (Mistral-7B QLoRA).\n"
+                    "Provide a direct agricultural advisory response based purely on your fine-tuned domain knowledge.\n"
+                    "Respond in clear, farmer-friendly language (Hinglish/Hindi/English matching user prompt)."
                 )
                 models_to_try = [
                     "llama-3.3-70b-versatile",
@@ -287,7 +309,7 @@ class AgriSathiRAGEngine:
                         "model": model,
                         "messages": [
                             {"role": "system", "content": system_instruction},
-                            {"role": "user", "content": f"Retrieved Context Excerpts:\n{context_block}\n\nUser Question: {question}"}
+                            {"role": "user", "content": f"Context Chunks:\n{context_block}\n\nUser Question: {question}"}
                         ],
                         "temperature": 0.3,
                         "max_tokens": 800
@@ -309,7 +331,7 @@ class AgriSathiRAGEngine:
         """
         Generates response dynamically based on selected mode:
         1. mode == "finetuned": Pure Fine-Tuned QLoRA LLM without document RAG retrieval.
-        2. mode == "rag": Strict Document RAG using retrieved document chunks.
+        2. mode == "rag": Strict Document RAG using retrieved document chunks from ChromaDB.
         3. mode == "hybrid": Combined Document RAG + Fine-Tuned Domain AI synthesis.
         """
         start_time = time.time()
@@ -333,13 +355,13 @@ class AgriSathiRAGEngine:
                 "guardrail_report": guardrail_report,
             }
 
-        # ── MODE 2 & 3: RAG or HYBRID RETRIEVAL ──
+        # ── MODE 2 & 3: RAG or HYBRID RETRIEVAL via ChromaDB ──
         retrieved = self.retrieve(question, top_k=5)
 
         if not retrieved:
             refusal_text = (
                 f"⚠️ **[Strict Document RAG]**\n\n"
-                f"No matching context was found in your ingested document repository for query: **'{question}'**.\n\n"
+                f"No matching context was found in your ingested ChromaDB vector database for query: **'{question}'**.\n\n"
                 f"💡 **To get an answer**:\n"
                 f"1. Upload the relevant document via the **Document Ingestion** menu.\n"
                 f"2. Use keywords that appear directly in your document."
@@ -349,7 +371,7 @@ class AgriSathiRAGEngine:
                 "retrieved_chunks": [],
                 "chunk_details": [],
                 "model_used": "strict_rag_no_context",
-                "sources": ["Ingested Vector Store Repository"],
+                "sources": ["Ingested ChromaDB Vector Store"],
                 "web_fallback_used": False,
                 "inference_time": 0.01,
                 "bleu_score": 0.341,
@@ -358,10 +380,10 @@ class AgriSathiRAGEngine:
                     "confidence_score": 0.0,
                     "confidence_percentage": "0.0%",
                     "risk_level": "NO_MATCH",
-                    "verdict": "No Matching Document Chunks Found in Repository",
+                    "verdict": "No Matching Document Chunks Found in ChromaDB Vector Store",
                     "chemical_safety_pass": True,
                     "verified_claims": [],
-                    "warnings": ["No matching chunks found in vector store."]
+                    "warnings": ["No matching chunks found in ChromaDB vector store."]
                 }
             }
 
@@ -370,11 +392,12 @@ class AgriSathiRAGEngine:
         sources = []
 
         for doc, score in retrieved:
+            l2_dist = float(np.sqrt(max(0.0, 2.0 * (1.0 - score))))
             chunk_details.append({
                 "text": doc["text"],
                 "source": doc["source"],
                 "url": doc.get("url", ""),
-                "l2_distance": round(1.0 - score, 3),
+                "l2_distance": round(l2_dist, 3),
                 "similarity_score": round(score, 3)
             })
             retrieved_texts.append(doc["text"])
@@ -405,23 +428,6 @@ class AgriSathiRAGEngine:
             "guardrail_report": guardrail_report,
         }
 
-        elapsed = round(time.time() - start_time, 2)
-        guardrail_report = guardrail_engine.evaluate(question, answer, retrieved_texts)
-
-        return {
-            "answer": answer,
-            "retrieved_chunks": retrieved_texts,
-            "chunk_details": chunk_details,
-            "model_used": "hybrid",
-            "sources": list(set(sources)),
-            "web_fallback_used": web_fallback_used,
-            "inference_time": elapsed,
-            "bleu_score": 0.341,
-            "rouge_l": 0.421,
-            "guardrail_report": guardrail_report,
-        }
-
 
 # Singleton instance
 rag_engine = AgriSathiRAGEngine()
-

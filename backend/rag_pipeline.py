@@ -1,19 +1,19 @@
 """
 AgriSathi RAG Pipeline
-FAISS Vector Store + Fine-tuned LLM Integration
+ChromaDB Vector Store + Fine-tuned LLM Integration
 """
 
 import os
 import torch
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
+from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.schema import Document
 
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 CHUNK_SIZE      = 512
 CHUNK_OVERLAP   = 50
-FAISS_INDEX_DIR = os.path.join(os.path.dirname(__file__), "../data/embeddings/faiss_index")
+CHROMA_PERSIST_DIR = os.path.join(os.path.dirname(__file__), "../data/chroma_db_pipeline")
 
 
 class AgriSathiRAG:
@@ -32,8 +32,8 @@ class AgriSathiRAG:
         )
         print(f"✅ Embeddings loaded on {device}")
 
-    def build_faiss_index(self, documents: list[str]):
-        """Build FAISS index from raw text documents."""
+    def build_vector_store(self, documents: list[str]):
+        """Build ChromaDB vector store from raw text documents."""
         if self.embeddings is None:
             self.load_embeddings()
 
@@ -43,22 +43,29 @@ class AgriSathiRAG:
         docs = [Document(page_content=d) for d in documents]
         chunks = splitter.split_documents(docs)
 
-        self.vectorstore = FAISS.from_documents(chunks, self.embeddings)
-        self.vectorstore.save_local(FAISS_INDEX_DIR)
-        print(f"✅ FAISS index built: {len(chunks)} chunks → {FAISS_INDEX_DIR}")
+        os.makedirs(CHROMA_PERSIST_DIR, exist_ok=True)
+        self.vectorstore = Chroma.from_documents(
+            documents=chunks,
+            embedding=self.embeddings,
+            persist_directory=CHROMA_PERSIST_DIR,
+            collection_name="agrisathi_pipeline"
+        )
+        print(f"✅ ChromaDB vector store built: {len(chunks)} chunks → {CHROMA_PERSIST_DIR}")
 
-    def load_faiss_index(self):
+    def load_vector_store(self):
         if self.embeddings is None:
             self.load_embeddings()
-        self.vectorstore = FAISS.load_local(
-            FAISS_INDEX_DIR, self.embeddings, allow_dangerous_deserialization=True
+        self.vectorstore = Chroma(
+            persist_directory=CHROMA_PERSIST_DIR,
+            embedding_function=self.embeddings,
+            collection_name="agrisathi_pipeline"
         )
-        print("✅ FAISS index loaded")
+        print("✅ ChromaDB vector store loaded")
 
     def retrieve(self, query: str, k: int = 3) -> list[str]:
         """Retrieve top-k relevant chunks for a query."""
         if self.vectorstore is None:
-            self.load_faiss_index()
+            self.load_vector_store()
         results = self.vectorstore.similarity_search(query, k=k)
         return [r.page_content for r in results]
 

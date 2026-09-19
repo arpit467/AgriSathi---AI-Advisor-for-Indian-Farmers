@@ -23,13 +23,13 @@ def main():
     sys.path.append(os.path.join(project_root, "backend"))
 
     # 1. Ingestion Check
-    vector_store = os.path.join(project_root, "data", "embeddings", "faiss_vector_store.json")
-    if not os.path.exists(vector_store):
-        print("\n[INGEST] Vector store missing. Executing Document Ingestion Pipeline...")
+    chroma_db_dir = os.path.join(project_root, "data", "chroma_db")
+    if not os.path.exists(chroma_db_dir) or not os.listdir(chroma_db_dir):
+        print("\n[INGEST] ChromaDB vector store missing. Executing Document Ingestion Pipeline...")
         from ingest_documents import DocumentIngestionPipeline
         DocumentIngestionPipeline().ingest()
     else:
-        print("\n[OK] Raw document vector database loaded successfully.")
+        print("\n[OK] ChromaDB document vector database loaded successfully.")
 
     # 2. Launch Uvicorn FastAPI Server
     print("\n[SERVER] Starting FastAPI Backend on http://localhost:8000 ...")

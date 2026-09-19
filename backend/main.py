@@ -242,7 +242,7 @@ def get_metrics():
 
 @app.post("/inspector/test", response_model=InspectorResponse)
 def run_inspector_test(req: InspectorRequest):
-    """Real-time FAISS vector retrieval & prompt assembly inspector endpoint."""
+    """Real-time ChromaDB vector retrieval & prompt assembly inspector endpoint."""
     retrieved = rag_engine.retrieve(req.query, top_k=req.top_k)
     chunks = []
     assembled_docs = []

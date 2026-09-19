@@ -1775,7 +1775,7 @@
 
       <span class="nav-group-label">Developer Tools</span>
       <a class="nav-item" onclick="switchTab('inspector',this)">
-        <span class="nav-icon">🔭</span> FAISS Inspector
+        <span class="nav-icon">🔭</span> ChromaDB Inspector
       </a>
     </nav>
 
@@ -1818,11 +1818,11 @@
           </div>
           <h2 class="hero-title">AgriSathi AI —<br>Multimodal Intelligence for 140M Farmers</h2>
           <p class="hero-desc">Domain-specific agricultural AI engine fine-tuned with 12,500+ Indian Kisan Call Center
-            queries and official Govt PDFs. Optimized for high BLEU/ROUGE precision, low-latency FAISS similarity
+            queries and official Govt PDFs. Optimized for high BLEU/ROUGE precision, low-latency ChromaDB similarity
             retrieval, and computer vision leaf diagnosis.</p>
           <div class="hero-chips">
             <div class="chip"><span class="chip-dot"></span>Mistral-7B QLoRA</div>
-            <div class="chip"><span class="chip-dot"></span>FAISS Vector DB</div>
+            <div class="chip"><span class="chip-dot"></span>ChromaDB Vector DB</div>
             <div class="chip"><span class="chip-dot"></span>Computer Vision</div>
             <div class="chip"><span class="chip-dot"></span>Web Speech STT/TTS</div>
             <div class="chip"><span class="chip-dot"></span>WhatsApp Webhook</div>
@@ -2947,12 +2947,12 @@
       </section>
 
       <!-- ════════════════════════════════════════
-       9. FAISS VECTOR INSPECTOR
+       9. CHROMADB VECTOR INSPECTOR
   ════════════════════════════════════════ -->
       <section id="sec-inspector" class="section">
         <div class="section-header">
           <div class="section-eyebrow">🔭 Developer Tools</div>
-          <h2 class="section-title">FAISS Vector Similarity Inspector</h2>
+          <h2 class="section-title">ChromaDB Vector Similarity Inspector</h2>
           <p class="section-desc">Inspect exact vector embeddings, L2 distance metric scores, retrieved context chunks,
             and assembled Mistral instruction prompts in real-time.</p>
         </div>
@@ -3050,7 +3050,7 @@
       mandi: ['Mandi Market Intelligence', 'Agmarknet District Commodity Rates, 7-Day Trends & Profit Optimizer'],
       weather: ['AI Disease Outbreak Radar', 'Microclimate Sensor Simulation & Fungal Spore Germination Risk'],
       outreach: ['WhatsApp & SMS Outreach', 'Twilio/Meta Webhook, WhatsApp Rich Markdown & 160-Char SMS'],
-      inspector: ['FAISS Vector Inspector', 'Real-Time Embedding Similarity & Context Payload Assembly'],
+      inspector: ['ChromaDB Vector Inspector', 'Real-Time Embedding Similarity & Context Payload Assembly'],
     };
 
     function switchTab(tabId, el) {
@@ -3395,7 +3395,7 @@
     }
 
     // ══════════════════════════════════════════
-    // FAISS INSPECTOR
+    // CHROMADB INSPECTOR
     // ══════════════════════════════════════════
     async function runInspectorTest() {
       const q = document.getElementById('inspectorQuery').value;

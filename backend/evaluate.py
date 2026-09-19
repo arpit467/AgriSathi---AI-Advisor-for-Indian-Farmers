@@ -121,7 +121,7 @@ def baseline_comparison(test_df: pd.DataFrame):
 
 def setup_sqlite_storage():
     print("\n" + "="*55)
-    print("🗄️  iv. DATA STORAGE (SQLite + FAISS)")
+    print("🗄️  iv. DATA STORAGE (SQLite + ChromaDB)")
     print("="*55)
     conn = sqlite3.connect(DB_PATH)
     cur  = conn.cursor()
@@ -154,7 +154,7 @@ def setup_sqlite_storage():
 
     print("  SQLite tables: training_runs, query_logs, dataset_registry")
     print(f"  DB path: {DB_PATH}")
-    print("  FAISS index: data/embeddings/faiss_index/ (built in Colab)")
+    print("  ChromaDB vector collection: data/chroma_db/")
     conn.close()
 
 
